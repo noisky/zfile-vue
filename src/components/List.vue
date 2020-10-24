@@ -3,6 +3,8 @@
         <el-table ref="fileTable" id="ListTable"
                   class="transition-box"
                   :data="this.$store.getters.tableData"
+                  @cell-mouse-enter="updateInfoHover"
+                  @cell-mouse-leave="updateInfoLeave"
                   @row-click="openFolder"
                   :height="$store.getters.showDocument && $store.state.common.config.readme !== null ? '50vh' : '84vh'"
                   :size="$store.getters.tableSize"
@@ -37,8 +39,8 @@
                     min-width="15%">
                 <template slot-scope="scope">
                     <div v-if="scope.row.type === 'FILE'">
-                        <i @click.stop="download" class="el-icon-download operator-btn"></i>
-                        <i @click.stop="directlink" class="el-icon-copy-document operator-btn hidden-sm-and-down"></i>
+                        <i @click.stop="fileDownload" class="el-icon-download operator-btn"></i>
+                        <i @click.stop="directlink(true, true)" class="el-icon-copy-document operator-btn hidden-sm-and-down"></i>
                     </div>
                 </template>
             </el-table-column>
@@ -100,12 +102,10 @@
                 <i class="el-icon-download"></i>
                 <label>下载</label>
             </v-contextmenu-item>
-            <!--如果是文件-->
             <v-contextmenu-item @click="directlink(true)" v-if="rightClickRow.type === 'FILE'">
                 <i class="el-icon-copy-document"></i>
                 <label>复制直链</label>
             </v-contextmenu-item>
-            <!--如果是文件夹-->
             <v-contextmenu-item @click="directlink()" v-else>
                 <i class="el-icon-copy-document"></i>
                 <label>复制直链</label>
@@ -127,12 +127,11 @@
 <script>
     import path from 'path'
     import 'element-ui/lib/theme-chalk/display.css';
+    import store from "@/store";
 
     const VideoPlayer = () => import(/* webpackChunkName: "front-video" */'./VideoPlayer');
     const TextPreview = () => import(/* webpackChunkName: "front-text" */'./TextPreview');
     const AudioPlayer = () => import(/* webpackChunkName: "front-audio" */'./AudioPlayer');
-
-    import store from "@/store";
 
     let prefixPath = '/main';
 
@@ -151,6 +150,8 @@
                 loading: false,
                 // 鼠标右键点击的行
                 rightClickRow: {},
+                // 当前鼠标悬浮的行
+                hoverRow: {},
                 state: null,
                 // 是否打开文本浏览器弹出
                 dialogTextVisible: false,
@@ -317,6 +318,13 @@
                     this.$router.push("/" + this.driveId + prefixPath + path.resolve(this.searchParam.path, '../'));
                 });
             },
+            updateInfoHover: function (row) {
+                this.hoverRow = row;
+                store.commit('hoverRow', row);
+            },
+            updateInfoLeave: function () {
+                store.commit('hoverRow', null);
+            },
             getPathPwd: function() {
                 let pwd = sessionStorage.getItem("zfile-pwd-" + this.searchParam.path);
                 return pwd === null ? '' : pwd;
@@ -341,7 +349,7 @@
                             message: 'FTP 模式, 不支持预览功能, 已自动调用下载',
                             type: 'warning'
                         });
-                        this.download();
+                        this.fileDownload();
                         return;
                     }
 
@@ -361,7 +369,7 @@
                             this.openAudio();
                             break;
                         default:
-                            this.download();
+                            this.fileDownload();
                     }
                 } else {
                     let path;
@@ -413,6 +421,9 @@
             download() {
                 window.location.href = this.rightClickRow.url;
             },
+            fileDownload() {
+                window.location.href = this.hoverRow.url;
+            },
             shortLink(x) {
                 let that = this;
                 let directlink;
@@ -421,23 +432,39 @@
                 } else {
                     directlink = document.location.href + "/" + this.common.removeDuplicateSeparator(encodeURI(this.rightClickRow.name));
                 }
-                this.$http.get('https://v1.alapi.cn/api/url', {params: {url: directlink}, withCredentials: false}).then((response) => {
-                    this.$copyText(response.data.data.short_url).then(function () {
-                        that.$message.success('复制成功');
-                    }, function () {
-                        that.$message.error('复制失败');
-                    });
+                this.$http.get('https://api.ffis.me/getShortUrl', {params: {url: directlink}, withCredentials: false}).then((response) => {
+                    console.log(response)
+                    if (response.data.code === 10000) {
+                        this.$copyText(response.data.data.shortUrl).then(function () {
+                            that.$message.success('复制成功');
+                        }, function () {
+                            that.$message.error('复制失败');
+                        });
+                    } else {
+                        that.$message.error("获取短连接失败：" + response.data.message);
+                    }
                 });
             },
-            directlink(x) {
+            directlink(x, z) {
                 let that = this;
                 let directlink;
-                if (x) {
-                    directlink = this.common.removeDuplicateSeparator(this.$store.getters.domain + "/directlink/" + this.driveId + "/" + encodeURI(this.rightClickRow.path) + "/" + encodeURI(this.rightClickRow.name));
+                let row;
+                if (z) {
+                    row = this.hoverRow;
                 } else {
-                    directlink = document.location.href + "/" + this.common.removeDuplicateSeparator(encodeURI(this.rightClickRow.name));
+                    row = this.rightClickRow;
                 }
-                console.log(directlink)
+                if (x) {
+                    directlink = this.common.removeDuplicateSeparator(this.$store.getters.domain + "/directlink/" + this.driveId + "/" + encodeURI(row.path) + "/" + encodeURI(row.name));
+                } else {
+                    let href = document.location.href;
+                    if (href.endsWith("/")) {
+                        directlink = href + this.common.removeDuplicateSeparator(encodeURI(row.name));
+                    } else {
+                        directlink = href + "/" + this.common.removeDuplicateSeparator(encodeURI(row.name));
+                    }
+                    console.log(directlink);
+                }
                 this.$copyText(directlink).then(function () {
                     that.$message.success('复制成功');
                 }, function () {
