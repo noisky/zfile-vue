@@ -79,7 +79,7 @@
                             <i @click.stop="download(scope.row)" class="el-icon-download operator-btn"></i>
                         </el-tooltip>
                         <el-tooltip class="item" effect="dark" content="生成直链" placement="top">
-                            <i @click.stop="copyShortLink(scope.row)" class="el-icon-copy-document operator-btn"></i>
+                            <i @click.stop="copyShortLinkFanfan(scope.row)" class="el-icon-copy-document operator-btn"></i>
                         </el-tooltip>
                     </div>
                 </template>
@@ -203,7 +203,7 @@
                 <i class="el-icon-download"></i>
                 <label>下载</label>
             </v-contextmenu-item>
-            <v-contextmenu-item @click="copyShortLink(rightClickRow)" v-show="rightClickRow.type === 'FILE'">
+            <v-contextmenu-item @click="copyShortLinkFanfan(rightClickRow)" v-show="rightClickRow.type === 'FILE'">
                 <i class="el-icon-copy-document"></i>
                 <label>生成直链</label>
             </v-contextmenu-item>
@@ -525,6 +525,27 @@
                     this.dialogCopyLinkVisible = true;
                 });
             },
+          copyShortLinkFanfan(row) {
+            let directlink = this.common.removeDuplicateSeparator(this.$store.getters.domain + "/directlink/" + this.driveId + "/" + encodeURI(row.path) + "/" + encodeURI(row.name));
+            // console.log(directlink);
+            //显示链接弹框
+            this.dialogCopyLinkVisible = true;
+            this.currentCopyLinkRow.row = row;
+            //生成直链
+            this.currentCopyLinkRow.directlink = directlink;
+            this.currentCopyLinkRow.link = "短链正在生成中...";
+            this.currentCopyLinkRow.img = 'https://static.ffis.me/img/loading.svg';
+            //调用饭饭的API获取短链
+            this.$http.post('https://api.ffis.me/getShortUrl', 'url=' + encodeURIComponent(directlink)).then((response) => {
+              // console.log(response)
+              if (response.data.flag) {
+                // console.log("查询成功，短链接：" + response.data.data.shortUrl)
+                this.currentCopyLinkRow.link = response.data.data.shortUrl;
+                const svgString = qrcode(response.data.data.shortUrl);
+                this.currentCopyLinkRow.img = svg2url(svgString);
+              }
+            });
+          },
             copyText(text) {
                 this.$copyText(text).then(() => {
                     this.$message.success('复制成功');
