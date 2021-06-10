@@ -66,7 +66,7 @@
                     label="操作"
                     class-name="zfile-table-col-operator"
                     :min-width="common.isMobile() ? '35%' : '15%'">
-                <template slot="header">
+                <template slot="header" v-if="$store.getters.showLinkBtn">
                     <i class="el-icon-s-operation hidden-xs-only"></i>
                     <span>操作</span>
                     <el-tooltip class="item" effect="dark" content="批量生成直链" placement="top">
@@ -78,7 +78,7 @@
                         <el-tooltip class="item" effect="dark" content="下载" placement="top">
                             <i @click.stop="download(scope.row)" class="el-icon-download operator-btn"></i>
                         </el-tooltip>
-                        <el-tooltip class="item" effect="dark" content="生成直链" placement="top">
+                        <el-tooltip v-if="$store.getters.showLinkBtn" class="item" effect="dark" content="生成直链" placement="top">
                             <i @click.stop="copyShortLinkFanfan(scope.row)" class="el-icon-copy-document operator-btn"></i>
                         </el-tooltip>
                     </div>
@@ -134,14 +134,14 @@
                         <el-form-item>
                             <el-input disabled prefix-icon="el-icon-coin" v-bind:value="currentCopyLinkRow.row.size | fileSizeFormat"></el-input>
                         </el-form-item>
-                        <el-form-item>
+                        <el-form-item v-if="$store.getters.showLinkBtn && $store.getters.showPathLink">
                             <el-input prefix-icon="el-icon-link" type="small" v-model="currentCopyLinkRow.directlink">
                                 <el-tooltip slot="append" class="item" effect="dark" content="复制" placement="bottom">
                                     <el-button @click="copyText(currentCopyLinkRow.directlink)" type="small" icon="el-icon-copy-document"></el-button>
                                 </el-tooltip>
                             </el-input>
                         </el-form-item>
-                        <el-form-item>
+                        <el-form-item v-if="$store.getters.showLinkBtn && $store.getters.showShortLink">
                             <el-input prefix-icon="el-icon-link" type="small" v-model="currentCopyLinkRow.link">
                                 <el-tooltip slot="append" class="item" effect="dark" content="复制" placement="bottom">
                                     <el-button @click="copyText(currentCopyLinkRow.link)" type="small" icon="el-icon-copy-document"></el-button>
@@ -173,7 +173,7 @@
                         </el-tooltip>
                     </template>
                 </el-table-column>
-                <el-table-column label="短链" width="250px" prop="link1">
+                <el-table-column v-if="$store.getters.showLinkBtn && $store.getters.showShortLink" label="短链" width="250px" prop="link1">
                     <template slot="header">
                         <span>短链</span>
                         <el-tooltip class="item" effect="dark" content="批量复制" placement="top">
@@ -181,7 +181,7 @@
                         </el-tooltip>
                     </template>
                 </el-table-column>
-                <el-table-column label="直链" width="350px" show-overflow-tooltip prop="link2">
+                <el-table-column v-if="$store.getters.showLinkBtn && $store.getters.showPathLink" label="直链" width="350px" show-overflow-tooltip prop="link2">
                     <template slot="header">
                         <span>直链</span>
                         <el-tooltip class="item" effect="dark" content="批量复制" placement="top">
@@ -322,7 +322,7 @@
 
                     this.$http.get('api/short-link', {params: {driveId: this.driveId, path: directlink}}).then((response) => {
                         let link1 = response.data.data;
-                        let link2 = this.common.removeDuplicateSeparator(this.$store.getters.domain + "/directlink/" + this.driveId + "/" + encodeURI(item.path) + "/" + encodeURI(item.name));
+                        let link2 = this.common.removeDuplicateSeparator(this.$store.getters.domain + "/" + this.$store.getters.directLinkPrefix + "/" + this.driveId + "/" + encodeURI(item.path) + "/" + encodeURI(item.name));
                         const svgString = qrcode(response.data.data);
                         let img = svg2url(svgString);
 
@@ -381,7 +381,13 @@
                     orderDirection: this.searchParam.orderDirection,
                 };
 
+	            let requestDriveId = this.driveId;
                 this.$http.get(url, {params: param}).then((response) => {
+                	let currentDriveId = this.driveId;
+                	if (requestDriveId !== currentDriveId) {
+                		return;
+	                }
+
                     // 如果需要密码或密码错误进行提示, 并弹出输入密码的框.
                     if (response.data.code === this.common.responseCode.INVALID_PASSWORD) {
                         this.$message.error('密码错误，请重新输入！');
@@ -496,7 +502,7 @@
                 this.dialogTextVisible = true;
             },
             openVideo() {
-                this.currentClickRow.url = this.common.removeDuplicateSeparator(this.$store.getters.domain + "/directlink/" + this.driveId + "/" + encodeURI(this.currentClickRow.path) + "/" + encodeURI(this.currentClickRow.name));
+	            this.currentClickRow.url = this.common.removeDuplicateSeparator(this.$store.getters.domain + "/" + this.$store.getters.directLinkPrefix +"/" + this.driveId + "/" + encodeURI(this.currentClickRow.path) + "/" + encodeURI(this.currentClickRow.name));
                 this.dialogVideoVisible = true;
             },
             // 右键菜单
@@ -518,7 +524,7 @@
                 this.$http.get('api/short-link', {params: {driveId: this.driveId, path: directlink}}).then((response) => {
                     this.currentCopyLinkRow.row = row;
                     this.currentCopyLinkRow.link = response.data.data;
-                    let directlink = this.common.removeDuplicateSeparator(this.$store.getters.domain + "/directlink/" + this.driveId + "/" + encodeURI(row.path) + "/" + encodeURI(row.name));
+                    let directlink = this.common.removeDuplicateSeparator(this.$store.getters.domain + "/" + this.$store.getters.directLinkPrefix + "/" + this.driveId + "/" + encodeURI(row.path) + "/" + encodeURI(row.name));
                     this.currentCopyLinkRow.directlink = directlink;
                     const svgString = qrcode(response.data.data);
                     this.currentCopyLinkRow.img = svg2url(svgString);
@@ -526,7 +532,7 @@
                 });
             },
           copyShortLinkFanfan(row) {
-            let directlink = this.common.removeDuplicateSeparator(this.$store.getters.domain + "/directlink/" + this.driveId + "/" + encodeURI(row.path) + "/" + encodeURI(row.name));
+            let directlink = this.common.removeDuplicateSeparator(this.$store.getters.domain + this.$store.getters.directLinkPrefix + this.driveId + "/" + encodeURI(row.path) + "/" + encodeURI(row.name));
             // console.log(directlink);
             //显示链接弹框
             this.dialogCopyLinkVisible = true;
