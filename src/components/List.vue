@@ -543,7 +543,7 @@
             if (isFolder) {
               directlink = document.location.href + "/" + this.common.removeDuplicateSeparator(encodeURI(row.name));
             } else {
-              directlink = this.common.removeDuplicateSeparator(this.$store.getters.domain + this.$store.getters.directLinkPrefix + this.driveId + "/" + encodeURI(row.path) + "/" + encodeURI(row.name));
+              directlink = this.common.removeDuplicateSeparator(this.$store.getters.domain + "/" + this.$store.getters.directLinkPrefix + "/" + this.driveId + "/" + encodeURI(row.path) + "/" + encodeURI(row.name));
             }
             // console.log(directlink);
             //显示链接弹框
