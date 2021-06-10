@@ -203,10 +203,16 @@
                 <i class="el-icon-download"></i>
                 <label>下载</label>
             </v-contextmenu-item>
+          <!-- 如果是文件 -->
             <v-contextmenu-item @click="copyShortLinkFanfan(rightClickRow)" v-show="rightClickRow.type === 'FILE'">
                 <i class="el-icon-copy-document"></i>
                 <label>生成直链</label>
             </v-contextmenu-item>
+          <!-- 如果是文件夹 -->
+          <v-contextmenu-item @click="copyShortLinkFanfan(rightClickRow, true)" v-show="rightClickRow.type === 'FOLDER'">
+            <i class="el-icon-copy-document"></i>
+            <label>生成直链</label>
+          </v-contextmenu-item>
         </v-contextmenu>
 
         <template>
@@ -279,7 +285,7 @@
                 },
                 dialogBatchCopyLinkVisible: false,
                 batchCopyLinkList: [],
-	            batchCopyLinkLoading: false
+              batchCopyLinkLoading: false
             }
         },
         watch: {
@@ -312,10 +318,10 @@
                 this.dialogBatchCopyLinkVisible = true;
             },
             loadLinkData(item, index, list) {
-            	if (item === null || index >= list.length) {
-		            this.batchCopyLinkLoading = false;
-		            return;
-	            }
+              if (item === null || index >= list.length) {
+                this.batchCopyLinkLoading = false;
+                return;
+              }
                 index++;
                 if (item.type === 'FILE') {
                     let directlink = this.common.removeDuplicateSeparator("/" + encodeURI(item.path) + "/" + encodeURI(item.name));
@@ -400,12 +406,12 @@
                         return;
                     }
 
-	                if (response.data.code !== 0) {
-		                this.$message.warning(response.data.msg);
-		                return;
-	                }
+                    if (response.data.code !== 0) {
+                      this.$message.warning(response.data.msg);
+                      return;
+                    }
 
-	                this.$store.commit('updateConfig', response.data.data.config)
+                    this.$store.commit('updateConfig', response.data.data.config)
                     if (this.driveId !== this.$store.getters.oldDriveId) {
                         this.$store.commit('updateOldDriveId', this.driveId);
                         this.$store.commit('updateNewImgMode', response.data.data.config.defaultSwitchToImgMode);
@@ -531,8 +537,14 @@
                     this.dialogCopyLinkVisible = true;
                 });
             },
-          copyShortLinkFanfan(row) {
-            let directlink = this.common.removeDuplicateSeparator(this.$store.getters.domain + this.$store.getters.directLinkPrefix + this.driveId + "/" + encodeURI(row.path) + "/" + encodeURI(row.name));
+          copyShortLinkFanfan(row, isFolder) {
+            let directlink;
+            // console.log(isFolder)
+            if (isFolder) {
+              directlink = document.location.href + "/" + this.common.removeDuplicateSeparator(encodeURI(row.name));
+            } else {
+              directlink = this.common.removeDuplicateSeparator(this.$store.getters.domain + this.$store.getters.directLinkPrefix + this.driveId + "/" + encodeURI(row.path) + "/" + encodeURI(row.name));
+            }
             // console.log(directlink);
             //显示链接弹框
             this.dialogCopyLinkVisible = true;
